@@ -8,6 +8,8 @@ const cors =require('cors');
 const typeDefs = require('./typeDefs');
 const  resolvers = require('./resolver');
 const auth = require("./middleware/auth");
+const { GraphQLUpload, graphqlUploadExpress } = require("graphql-upload");
+module.exports = base_dir = __dirname;
 
 
 
@@ -31,7 +33,12 @@ async function StartServer(){
     return user;
           },
     });
-    
+    app.use(
+        graphqlUploadExpress({
+          maxFileSize: 8000000000000000,
+          maxFiles: 20,
+        })
+      );
     await apolloServer.start();
     apolloServer.applyMiddleware({app:app});
 
@@ -45,7 +52,7 @@ async function StartServer(){
         useUnifiedTopology: true,
         useNewUrlParser: true 
     });
-
+    app.use("/uploads", express.static("uploads"));
     console.log("mongoo db server is running");
     app.listen(4000, ()=>{
         console.log("app is runnning at port 4000");
@@ -53,10 +60,6 @@ async function StartServer(){
 
 
 }
-
-
-
-
 
 
 

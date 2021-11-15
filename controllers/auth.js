@@ -15,8 +15,6 @@ if(!errors.isEmpty()){
   const user = new User(args.post);
   await user.save();
   return user;
-
-
 }
 catch(err){
     console.log("error Catching of Signup ", err);
@@ -78,22 +76,21 @@ const Signout = async (parents, args, {res}, info ) => {
  
   //custom middlewares
   const isAuthenticated = (profile, auth) => {
+    console.log(profile._id);
+    console.log(auth._id);
     let checker = profile && auth && profile._id == auth._id;
+    console.log(checker);
     if (!checker) {
-      return res.status(403).json({
-        error: "ACCESS DENIED"
-      });
+      return false;
     }
   return true;
   };
   
-  const isAdmin = (req, res, next) => {
-    if (req.profile.role === 0) {
-      return res.status(403).json({
-        error: "You are not ADMIN, Access denied"
-      });
-    }
-    next();
+  const isAdmin = (user) => {
+    if (user.role === 0) {
+      return false;
+      }
+      return user;
   };
   
 

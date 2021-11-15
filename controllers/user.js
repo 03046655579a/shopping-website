@@ -1,11 +1,12 @@
 const User = require('../models/user');
+const { Order, ProductCart } = require("../models/order");
 const { ApolloError } = require('apollo-server-errors');
 const {isAuthenticated} = require('./auth');
-const getUserByEmail = async (email) => {
+const getUserByID = async (id) => {
 try{
-    const user = await User.findOne({email});
+    const user = await User.findById(id);
     if(!user){
-        return "user doesnot found in the dataBase"
+        return false;
     }
     return user;
 }
@@ -16,25 +17,31 @@ return new ApolloError(err);
 }
 
 const getUser = async (parents, args, {req, res}, info ) => {
-    console.log(args.post.email);
-    const{ email} = args.post;
-   const user = await getUserByEmail(email);
-    return(user);
+    try{
+        const{ id} = args.post;
+        const user = await getUserByID(id);
+         return(user);
+    }catch(err){
+        console.log(err);
+        return `this is the ${err}`;
+    }
+    
 }
 
 const updateUser = async (parents, args, context, info) => {
  try {
      console.log(context._id);
-    const {email} = args.post;
-    const em = await getUserByEmail(email);
+    const {id, email} = args.post;
+    const em = await getUserByID(id);
     console.log("-->",em);
      if(!em) {
-         return 'Email is incorrect please Enter correct email'
+         return 'Email with this ID is incorrect please Enter correct email'
      }
      const isauth = await isAuthenticated(em, context);
       if(!isauth){
           return 'user is not Authenticated';
       }
+      
    const user = await User.findOneAndUpdate({email: email},
                                          { $set: args.post },
                                          { new: true, useFindAndModify: false });
@@ -49,8 +56,78 @@ return (user);
  
 }
 
+const userPurchaseList = async (parents, args, context, info) => {
+   try {
+    const {id} = args.post;
+
+    //getUserByID
+       const user = await getUserByID(id);
+             if(!user){
+               return "user with this id is not stored in the DataBase"
+ }
+ //isAuthenticated
+              const isauth =    await isAuthenticated(user, context);
+              console.log("------------------->>>>>>>.",isauth)
+                if(!isauth){
+                       return 'User is not authenticated'
+                }
+             const order =  await Order.find({ user: user })
+                .populate("user", "_id name");
+                if(!order){
+                    return "user purchase list is empty"
+                }
+                return order;
+   }
+   catch(err){
+    return `this is the ${err}`;
+}
+}
+
+
+
+
+
+
+
+// middleware 
+const PushOrderInPurchaseList = async (orders) => {
+try {
+    let purchases = [];
+    orders.products.forEach(product => {
+        purchases.push({
+            id: product.product,
+            name: product.name,
+            count: product.count,
+            price: product.Price,
+            amount: orders.amount,
+            address: orders.address,
+            userID: orders.id
+
+        })
+    });
+
+  const push = await User.findOneAndUpdate(
+        { _id: orders.id },
+        { $push: { purchases: purchases } },
+        { new: true });
+        if(!push){
+            return false;
+        }
+        return true;
+
+} catch (error) {
+    console.log(error);
+}
+    
+}
+
+
+
 module.exports = {
+    getUserByID,
     getUser,
-    updateUser
+    updateUser,
+    PushOrderInPurchaseList,
+    userPurchaseList
 
 }
